@@ -65,6 +65,21 @@ def filepath_handler(uh, value):
     print('called filepath_handler', value)
 
 def random_integer_handler(uh, value):
+    d = bpy.data.texts.get('do_random_integer')
+    if d:
+        try:
+            exec(d.as_string())
+        except:
+            print('failed string in do_random_integer')
+    print('called random_integer handler', value)
+
+def circle_handler(uh, value):
+    d = bpy.data.texts.get('do_circle')
+    if d:
+        try:
+            exec(d.as_string())
+        except:
+            print('failed string in do_random_integer')
     print('called random_integer handler', value)
 
 # handlers can be added laterm but I think the server needs to be stopped and restarted..
@@ -75,7 +90,7 @@ osc_statemachine['handlers'] = {}
 # message on those paths.. the server runs continuously 
 osc_statemachine['handlers']['filepath'] = filepath_handler
 osc_statemachine['handlers']['random_integer'] = random_integer_handler
-
+osc_statemachine['handlers']['circle'] = circle_handler
 
 def start_server_comms(ip, port):
     handlers = osc_statemachine['handlers']
@@ -89,6 +104,7 @@ def start_server_comms(ip, port):
     dispatch = dispatcher.Dispatcher()
     dispatch.map("/filepath", handlers['filepath'])
     dispatch.map("/random_integer", handlers['random_integer'])
+    dispatch.map("/circle", handlers['circle'])
 
     osc_statemachine['dispatcher'] = dispatch
 
