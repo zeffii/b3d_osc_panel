@@ -64,7 +64,7 @@ except:
 def filepath_handler(uh, value):
     print('called filepath_handler', value)
 
-def random_integer_handler(uh, fp):
+def random_integer_handler(uh, value):
     print('called random_integer handler', value)
 
 # handlers can be added laterm but I think the server needs to be stopped and restarted..
@@ -86,22 +86,23 @@ def start_server_comms(ip, port):
     args = parser.parse_args()
     osc_statemachine['args'] = args
 
-    disp = dispatcher.Dispatcher()
-    disp.map("/filepath", handlers['filepath'])
-    disp.map("/random_integer", handlers['random_integer'])
+    dispatch = dispatcher.Dispatcher()
+    dispatch.map("/filepath", handlers['filepath'])
+    dispatch.map("/random_integer", handlers['random_integer'])
 
-    osc_statemachine['dispatcher'] = disp
+    osc_statemachine['dispatcher'] = dispatch
 
     try:
-        server = osc_server.ForkingOSCUDPServer((args.ip, args.port), disp)
+        server = osc_server.ThreadingOSCUDPServer((args.ip, args.port), dispatch)
+        print("Serving on {}".format(server.server_address))
+
+        server_thread = threading.Thread(target=server.serve_forever)
+        server_thread.start()
+
         osc_statemachine['server'] = server
     except:
         print('already active')
         server = osc_statemachine['server']
-
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.start()
-    print("Serving on {}".format(server.server_address))
 
 
 class GenericOscClient(bpy.types.Operator, object):
