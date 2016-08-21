@@ -114,10 +114,6 @@ class GenericOscClient(bpy.types.Operator, object):
     speed = FloatProperty()
     mode = StringProperty()
 
-    def process(self):
-        fp = filepath_read_handler()
-
-
     def modal(self, context, event):
 
         if osc_statemachine['status'] == STOPPED:
@@ -127,6 +123,7 @@ class GenericOscClient(bpy.types.Operator, object):
         if not (event.type == 'TIMER'):
             return {'PASS_THROUGH'}
 
+        # call block here
         return {'PASS_THROUGH'}
 
     def event_dispatcher(self, context, type_op):
