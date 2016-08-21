@@ -151,6 +151,7 @@ class GenericOscClient(bpy.types.Operator, object):
     def cancel(self, context):
         wm = context.window_manager
         wm.event_timer_remove(self._timer)
+        osc_statemachine['server'].shutdown()
 
 
 class GenericOSCpanel(bpy.types.Panel):
