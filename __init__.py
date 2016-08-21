@@ -16,194 +16,198 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+bl_info = {
+    "name": "generic OSC panel",
+    "author": "Dealga McArdle",
+    "version": (0, 2),
+    "blender": (2, 7, 7),
+    "location": "",
+    "description": "",
+    "warning": "",
+    "wiki_url": "",
+    "tracker_url": "",
+    "category": "Text Editor"
+}
+
+
+import argparse
 import importlib
+import threading
 
 import bpy
-from bpy.props import BoolProperty, BoolVectorProperty, StringProperty, FloatProperty
+from bpy.props import (
+    BoolProperty, StringProperty, FloatProperty, IntProperty
+)
 
-FOUND = 1
-RUNNING = 3
-DISABLED = 2
+
 NOT_FOUND = 0
+FOUND = 1
+STOPPED = 2
+RUNNING = 3
+
 
 try:
-    from pythonosc import osc_message_builder
-    from pythonosc import udp_client
     STATUS = FOUND
+    if ('pythonosc' in locals()):
+        print('bp_externall : reload event. handled')
+    else:
+        import pythonosc
+        from pythonosc import osc_server
+        from pythonosc import dispatcher
+        print('bp_externall loaded pythonosc')
+
 except:
-    print('python osc not found!, or failed to reimport')
     STATUS = NOT_FOUND
+    print('python osc not found!, or failed to reimport')
 
 
+def filepath_handler(uh, value):
+    print('called filepath_handler', value)
+
+def random_integer_handler(uh, fp):
+    print('called random_integer handler', value)
+
+# handlers can be added laterm but I think the server needs to be stopped and restarted..
 osc_statemachine = {'status': STATUS}
+osc_statemachine['handlers'] = {}
+
+# when these are assigned, they will get called any time the OSC server receives a 
+# message on those paths.. the server runs continuously 
+osc_statemachine['handlers']['filepath'] = filepath_handler
+osc_statemachine['handlers']['random_integer'] = random_integer_handler
 
 
-def start_server_comms():
-    ip = "127.0.0.1"
-    port = 57120  # SuperCollider
-    client = udp_client.UDPClient(ip, port)
-    osc_statemachine['status'] = RUNNING
-    osc_msg = osc_message_builder.OscMessageBuilder
-    osc_statemachine['osc_msg'] = osc_msg
-    osc_statemachine['client'] = client
+def start_server_comms(ip, port):
+    handlers = osc_statemachine['handlers']
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ip", default=ip, help="The ip to listen on")
+    parser.add_argument("--port", type=int, default=port, help="The port to listen on")
+    args = parser.parse_args()
+    osc_statemachine['args'] = args
+
+    disp = dispatcher.Dispatcher()
+    disp.map("/filepath", handlers['filepath'])
+    disp.map("/random_integer", handlers['random_integer'])
+
+    osc_statemachine['dispatcher'] = disp
+
+    try:
+        server = osc_server.ForkingOSCUDPServer((args.ip, args.port), disp)
+        osc_statemachine['server'] = server
+    except:
+        print('already active')
+        server = osc_statemachine['server']
+
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.start()
+    print("Serving on {}".format(server.server_address))
 
 
-class OscServerOps(bpy.types.Operator, object):
-    """Operator which runs its self from a timer"""
-    bl_idname = "wm.flow_osc_server"
-    bl_label = "start n stop osc server"
+class GenericOscClient(bpy.types.Operator, object):
 
-    mode = StringProperty(default='')
+    bl_idname = "wm.generic_osc_server"
+    bl_label = "start and stop osc server"
+
+    _timer = None
+    speed = FloatProperty()
+    mode = StringProperty()
+
+    def process(self):
+        fp = filepath_read_handler()
+
+
+    def modal(self, context, event):
+
+        if osc_statemachine['status'] == STOPPED:
+            self.cancel(context)
+            return {'FINISHED'}
+
+        if not (event.type == 'TIMER'):
+            return {'PASS_THROUGH'}
+
+        return {'PASS_THROUGH'}
 
     def event_dispatcher(self, context, type_op):
-        ntree = context.space_data.node_tree
         if type_op == 'start':
-            ntree.osc_state = True
-            status = osc_statemachine.get('status')
-            if status in {FOUND, DISABLED}:
-                print('opening server comms')
-                start_server_comms()
-            else:
-                print('pythonosc module is needed but not found')
+
+            wm = context.window_manager
+            self._timer = wm.event_timer_add(self.speed, context.window)
+            wm.modal_handler_add(self)
+
+            osc_statemachine['status'] = RUNNING
+            props = context.scene.generic_osc
+            start_server_comms(props.ip, props.port)
 
         if type_op == 'end':
-            # doesn't end OSC listener, merely disables UI for now
-            osc_statemachine['status'] == DISABLED
-            ntree.osc_state = False
+            osc_statemachine['server'].shutdown()
+            osc_statemachine['status'] = STOPPED
 
     def execute(self, context):
         self.event_dispatcher(context, self.mode)
         return {'RUNNING_MODAL'}
 
-
-# verbose for now
-def send_synthdef_str(_str_):
-    osc_msg = osc_statemachine.get('osc_msg')
-    if osc_msg:
-
-        msg = osc_msg(address='/flow/evalSynthDef')
-        msg.add_arg(_str_)
-        msg = msg.build()
-
-        client = osc_statemachine.get('client')
-        print('sending synthdef')
-        client.send(msg)
+    def cancel(self, context):
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
 
 
-def send_synthdef_trigger():
-    osc_msg = osc_statemachine.get('osc_msg')
-    if osc_msg:
+class GenericOSCpanel(bpy.types.Panel):
 
-        msg = osc_msg(address='/flow/triggerSynth')
-        msg.add_arg('tone')
-        msg = msg.build()
-
-        client = osc_statemachine.get('client')
-        print('sending synthdef trigger')
-        client.send(msg)
-
-
-def send_synthdef_free(_str_=''):
-    osc_msg = osc_statemachine.get('osc_msg')
-    if osc_msg:
-        if _str_:
-            msg = osc_msg(address='/flow/freeAll')
-            msg.add_arg('freeAll')
-        else:
-            msg = osc_msg(address='/flow/freeSynth')
-            msg.add_arg('free')
-
-        msg = msg.build()
-
-        client = osc_statemachine.get('client')
-        print('sending free.synth')
-        client.send(msg)
-
-
-class SendSynthdef(bpy.types.Operator, object):
-    """Send SynthDef over OSC"""
-    bl_idname = "wm.spflow_eval_synthdef"
-    bl_label = "start n stop osc server"
-
-    mode = StringProperty(default='')
-
-    def event_dispatcher(self, context, type_op):
-        if not osc_statemachine['status'] == RUNNING:
-            return
-
-        if type_op == 'send':
-
-            sd = context.space_data.edit_tree.nodes.get('SynthDef Maker')
-            print('sd:', sd)
-            if sd:
-                print(sd.generated_synthdef)
-                print('sending generated')
-                send_synthdef_str(sd.generated_synthdef)
-
-            else:
-                print('sending predefined')
-                send_synthdef_str(default_synthdef)
-
-        if type_op == 'trigger':
-            send_synthdef_trigger()
-        if type_op == 'free':
-            send_synthdef_free()
-        if type_op == 'freeAll':
-            send_synthdef_free('all')
-
-    def execute(self, context):
-        self.event_dispatcher(context, self.mode)
-        return {'RUNNING_MODAL'}
-
-
-class OSCpanel(bpy.types.Panel):
-    '''
-    : intended to handle io of OSC messages
-    '''
-    bl_idname = "SoundPetalOSCpanel"
-    bl_label = "SoundPetal OSC panel"
-    bl_space_type = 'NODE_EDITOR'
+    bl_idname = "GenericOSCpanel"
+    bl_label = "generic OSC panel"
+    bl_space_type = 'TEXT_EDITOR'
     bl_region_type = 'UI'
-    bl_category = 'FLOW'
-    bl_options = {'DEFAULT_CLOSED'}
+    # bl_options = {'DEFAULT_CLOSED'}
     use_pin = True
 
-    @classmethod
-    def poll(cls, context):
-        try:
-            return context.space_data.node_tree.bl_idname == 'FlowCustomTreeType'
-        except:
-            return False
-
     def draw(self, context):
-        ntree = context.space_data.node_tree
-
         layout = self.layout
         col = layout.column()
-        tstr = 'start' if not ntree.osc_state else 'end'
-        col.operator('wm.spflow_osc_server', text=tstr).mode = tstr
 
-        # show some controls when server is started
-        if tstr == 'end':
-            col.operator('wm.spflow_eval_synthdef', text='send').mode = 'send'
-            col.operator('wm.spflow_eval_synthdef', text='trigger').mode = 'trigger'
-            col.operator('wm.spflow_eval_synthdef', text='free').mode = 'free'
-            col.operator('wm.spflow_eval_synthdef', text='freeAll').mode = 'freeAll'
+        state = osc_statemachine['status']
+
+        # exit early
+        if state == NOT_FOUND:
+            col.label('failed to (re)import pythonosc - see console')
+            return
+
+        # promising! continue
+        tstr = ''
+        if state in {FOUND, STOPPED}:
+            tstr = 'start'
+            col.prop(context.scene.generic_osc, 'ip')
+            col.prop(context.scene.generic_osc, 'port')
+
+        elif state == RUNNING:
+            props = context.scene.generic_osc
+            col.label('listening on ip {0} and port {1}'.format(props.ip, props.port))
+            for path in osc_statemachine['handlers'].keys():
+                col.label('listening on /{}'.format(path))
+            
+            tstr = 'end'
+
+        if tstr:
+            op = col.operator('wm.generic_osc_server', text=tstr)
+            op.mode = tstr
+            op.speed = 1
+
+
+class GenericOscProps(bpy.types.PropertyGroup):
+    ip = StringProperty(default='127.0.0.1')
+    port = IntProperty(default='6449')
 
 
 def register():
-    bpy.types.Scene.osc_state = BoolProperty(
-        default=False,
-        description='toggle used to indicate state of osc client and hide buttons'
-        )
-
-    bpy.utils.register_class(OscServerOps)
-    bpy.utils.register_class(SendSynthdef)
-    bpy.utils.register_class(OSCpanel)
+    bpy.utils.register_class(GenericOscProps)
+    bpy.types.Scene.generic_osc = bpy.props.PointerProperty(
+        name="osc_properties", type=GenericOscProps)
+    bpy.utils.register_class(GenericOSCpanel)
+    bpy.utils.register_class(GenericOscClient)
 
 
 def unregister():
-    bpy.utils.unregister_class(OSCpanel)
-    bpy.utils.unregister_class(SendSynthdef)
-    bpy.utils.unregister_class(OscServerOps)
-    del bpy.types.Scene.osc_state
+    bpy.utils.unregister_class(GenericOscProps)
+    bpy.utils.unregister_class(GenericOSCpanel)
+    bpy.utils.unregister_class(GenericOscClient)
+    del bpy.types.Scene.generic_osc
