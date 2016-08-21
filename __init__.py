@@ -36,7 +36,8 @@ import threading
 
 import bpy
 from bpy.props import (
-    BoolProperty, StringProperty, FloatProperty, IntProperty
+    BoolProperty, StringProperty, FloatProperty,
+    IntProperty, PointerProperty, CollectionProperty
 )
 
 
@@ -61,6 +62,10 @@ except:
     print('python osc not found!, or failed to reimport')
 
 
+add = bpy.utils.register_class
+remove = bpy.utils.unregister_class
+
+
 def general_handler(path, value):
     '''
     path will be something like /circle
@@ -77,7 +82,7 @@ def general_handler(path, value):
         except:
             print('failed to evaluate/exec {0}'.format(textfile_name))
 
-# handlers can be added laterm but I think the server needs to be stopped and restarted..
+# handlers can be added later but I think the server needs to be stopped and restarted..
 osc_statemachine = {'status': STATUS}
 osc_statemachine['handlers'] = {}
 
@@ -101,12 +106,12 @@ def start_server_comms(ip, port):
     try:
         server = osc_server.ThreadingOSCUDPServer((args.ip, args.port), dispatch)
         print("Serving on {}".format(server.server_address))
-
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()
-
         osc_statemachine['server'] = server
+
     except:
+
         print('already active')
         server = osc_statemachine['server']
 
@@ -197,22 +202,62 @@ class GenericOSCpanel(bpy.types.Panel):
             op.mode = tstr
             op.speed = 1
 
+        row = col.row(align=True)
+        row.prop()
+        config = row.operator('wm.osc_path_ops', icon='PLUS')
+        config.config = 'add'
+        config.new_path = context.generic_osc.new_path
+
 
 class GenericOscProps(bpy.types.PropertyGroup):
     ip = StringProperty(default='127.0.0.1')
     port = IntProperty(default=7771)
+    new_path = StringProperty()
+
+
+class GenericOscPathGroup(bpy.types.PropertyGroup):
+    path = StringProperty()
+
+
+class GenericOscPathOps(bpy.types.Operator):
+
+    bl_idname = "wm.osc_path_ops"
+    bl_label = "Add Remove paths"
+
+    fn_name = bpy.props.StringProperty(default='')
+
+    def dispatch(self, context, type_op):
+        n = context.node
+
+        if type_op == 'ADD':
+            new_path = context.scene.generic_osc_list.add()
+            new_path = context.scene.generic_osc.new_path
+            context.scene.generic_osc.new_path = ""
+
+        elif type_op == 'REMOVE':
+            pass
+
+    def execute(self, context):
+        self.dispatch(context, self.fn_name)
+        return {'FINISHED'}
+
 
 
 def register():
-    bpy.utils.register_class(GenericOscProps)
-    bpy.types.Scene.generic_osc = bpy.props.PointerProperty(
-        name="osc_properties", type=GenericOscProps)
-    bpy.utils.register_class(GenericOSCpanel)
-    bpy.utils.register_class(GenericOscClient)
+    add(GenericOscProps)
+    add(GenericOscGroup)
+    bpy.types.Scene.generic_osc = PointerProperty(name="properties", type=GenericOscProps)
+    bpy.types.Scene.generic_osc_list = CollectionProperty(name="paths", type=GenericOscPathGroup)
+    add(GenericOSCpanel)
+    add(GenericOscClient)
+    add(GenericOscPathOps)
 
 
 def unregister():
-    bpy.utils.unregister_class(GenericOscProps)
-    bpy.utils.unregister_class(GenericOSCpanel)
-    bpy.utils.unregister_class(GenericOscClient)
+    remove(GenericOscProps)
+    remove(GenericOscGroup)
+    remove(GenericOSCpanel)
+    remove(GenericOscClient)
+    remove(GenericOscPathOps)
     del bpy.types.Scene.generic_osc
+    del bpy.types.Scene.generic_osc_list
