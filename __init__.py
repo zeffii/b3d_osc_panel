@@ -88,6 +88,7 @@ osc_statemachine['handlers'] = {}
 
 
 def start_server_comms(ip, port, paths):
+    # paths = ['random_integer', 'circle']
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default=ip, help="The ip to listen on")
@@ -96,7 +97,6 @@ def start_server_comms(ip, port, paths):
     osc_statemachine['args'] = args
 
     dispatch = dispatcher.Dispatcher()
-    paths = ['random_integer', 'circle']
 
     for path in paths:
         dispatch.map("/" + path, general_handler)
@@ -178,6 +178,11 @@ class GenericOSCpanel(bpy.types.Panel):
 
         state = osc_statemachine['status']
 
+        row = col.row(align=True)
+        row.prop(context.scene.generic_osc, 'new_path', text='')
+        config = row.operator('wm.osc_path_ops', icon='PLUS', text='')
+        config.fn_name = 'ADD'
+
         # exit early
         if state == NOT_FOUND:
             col.label('failed to (re)import pythonosc - see console')
@@ -197,7 +202,7 @@ class GenericOSCpanel(bpy.types.Panel):
             for i, path in enumerate(props_list):
                 path_row = col.row(align=True)
                 path_row.label('listening on /{}'.format(path))
-                config = path_row.operator('wm.osc_path_ops', icon='MINUS')
+                config = path_row.operator('wm.osc_path_ops', icon='MINUS', text='')
                 config.fn_name = 'REMOVE'
                 config.idx = i
             
@@ -208,10 +213,6 @@ class GenericOSCpanel(bpy.types.Panel):
             op.mode = tstr
             op.speed = 1
 
-        row = col.row(align=True)
-        row.prop()
-        config = row.operator('wm.osc_path_ops', icon='PLUS')
-        config.fn_name = 'ADD'
 
 
 class GenericOscProps(bpy.types.PropertyGroup):
@@ -250,7 +251,7 @@ class GenericOscPathOps(bpy.types.Operator):
 
 def register():
     add(GenericOscProps)
-    add(GenericOscGroup)
+    add(GenericOscPathGroup)
     bpy.types.Scene.generic_osc = PointerProperty(name="properties", type=GenericOscProps)
     bpy.types.Scene.generic_osc_list = CollectionProperty(name="paths", type=GenericOscPathGroup)
     add(GenericOSCpanel)
@@ -260,7 +261,7 @@ def register():
 
 def unregister():
     remove(GenericOscProps)
-    remove(GenericOscGroup)
+    remove(GenericOscPathGroup)
     remove(GenericOSCpanel)
     remove(GenericOscClient)
     remove(GenericOscPathOps)
