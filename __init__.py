@@ -61,23 +61,21 @@ except:
     print('python osc not found!, or failed to reimport')
 
 
-def random_integer_handler(uh, value):
-    d = bpy.data.texts.get('do_random_integer')
-    if d:
-        try:
-            exec(d.as_string())
-        except:
-            print('failed string in do_random_integer')
-    print('called random_integer handler', value)
+def general_handler(path, value):
+    '''
+    path will be something like /circle
+    this Modal OSC panel's operator expects to find a textblock called 'do_circle'
+    it will execute the code it contains whenever it receives a new path/value pair.
 
-def circle_handler(uh, value):
-    d = bpy.data.texts.get('do_circle')
+    '''
+    textfile_name = 'do_' + path[1:]
+    d = bpy.data.texts.get(textfile_name)
     if d:
         try:
             exec(d.as_string())
+            print('called random_integer handler', value)
         except:
-            print('failed string in do_random_integer')
-    print('called random_integer handler', value)
+            print('failed to evaluate/exec {0}'.format(textfile_name))
 
 # handlers can be added laterm but I think the server needs to be stopped and restarted..
 osc_statemachine = {'status': STATUS}
@@ -85,7 +83,6 @@ osc_statemachine['handlers'] = {}
 
 
 def start_server_comms(ip, port):
-    handlers = osc_statemachine['handlers']
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default=ip, help="The ip to listen on")
@@ -97,8 +94,7 @@ def start_server_comms(ip, port):
     paths = ['random_integer', 'circle']
 
     for path in paths:
-        handlers[path] = eval(path + '_handler')
-        dispatch.map("/" + path, handlers[path])
+        dispatch.map("/" + path, general_handler)
 
     osc_statemachine['dispatcher'] = dispatch
 
@@ -191,8 +187,8 @@ class GenericOSCpanel(bpy.types.Panel):
         elif state == RUNNING:
             props = context.scene.generic_osc
             col.label('listening on ip {0} and port {1}'.format(props.ip, props.port))
-            for path in osc_statemachine['handlers'].keys():
-                col.label('listening on /{}'.format(path))
+            # for path in osc_statemachine['handlers'].keys():
+            #    col.label('listening on /{}'.format(path))
             
             tstr = 'end'
 
