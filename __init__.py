@@ -87,7 +87,7 @@ osc_statemachine = {'status': STATUS}
 osc_statemachine['handlers'] = {}
 
 
-def start_server_comms(ip, port):
+def start_server_comms(ip, port, paths):
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default=ip, help="The ip to listen on")
@@ -146,7 +146,8 @@ class GenericOscClient(bpy.types.Operator, object):
 
             osc_statemachine['status'] = RUNNING
             props = context.scene.generic_osc
-            start_server_comms(props.ip, props.port)
+            paths = context.scene.generic_osc_list
+            start_server_comms(props.ip, props.port, paths)
 
         if type_op == 'end':
             osc_statemachine['server'].shutdown()
@@ -191,9 +192,14 @@ class GenericOSCpanel(bpy.types.Panel):
 
         elif state == RUNNING:
             props = context.scene.generic_osc
+            props_list = context.scene.generic_osc_list
             col.label('listening on ip {0} and port {1}'.format(props.ip, props.port))
-            # for path in osc_statemachine['handlers'].keys():
-            #    col.label('listening on /{}'.format(path))
+            for i, path in enumerate(props_list):
+                path_row = col.row(align=True)
+                path_row.label('listening on /{}'.format(path))
+                config = path_row.operator('wm.osc_path_ops', icon='MINUS')
+                config.fn_name = 'REMOVE'
+                config.idx = i
             
             tstr = 'end'
 
@@ -205,8 +211,7 @@ class GenericOSCpanel(bpy.types.Panel):
         row = col.row(align=True)
         row.prop()
         config = row.operator('wm.osc_path_ops', icon='PLUS')
-        config.config = 'add'
-        config.new_path = context.generic_osc.new_path
+        config.fn_name = 'ADD'
 
 
 class GenericOscProps(bpy.types.PropertyGroup):
@@ -225,9 +230,9 @@ class GenericOscPathOps(bpy.types.Operator):
     bl_label = "Add Remove paths"
 
     fn_name = bpy.props.StringProperty(default='')
+    idx = IntProperty()
 
     def dispatch(self, context, type_op):
-        n = context.node
 
         if type_op == 'ADD':
             new_path = context.scene.generic_osc_list.add()
@@ -235,7 +240,7 @@ class GenericOscPathOps(bpy.types.Operator):
             context.scene.generic_osc.new_path = ""
 
         elif type_op == 'REMOVE':
-            pass
+            context.scene.generic_osc_list.remove(self.idx)
 
     def execute(self, context):
         self.dispatch(context, self.fn_name)
