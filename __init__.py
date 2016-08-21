@@ -61,9 +61,6 @@ except:
     print('python osc not found!, or failed to reimport')
 
 
-def filepath_handler(uh, value):
-    print('called filepath_handler', value)
-
 def random_integer_handler(uh, value):
     d = bpy.data.texts.get('do_random_integer')
     if d:
@@ -86,11 +83,6 @@ def circle_handler(uh, value):
 osc_statemachine = {'status': STATUS}
 osc_statemachine['handlers'] = {}
 
-# when these are assigned, they will get called any time the OSC server receives a 
-# message on those paths.. the server runs continuously 
-osc_statemachine['handlers']['filepath'] = filepath_handler
-osc_statemachine['handlers']['random_integer'] = random_integer_handler
-osc_statemachine['handlers']['circle'] = circle_handler
 
 def start_server_comms(ip, port):
     handlers = osc_statemachine['handlers']
@@ -102,9 +94,11 @@ def start_server_comms(ip, port):
     osc_statemachine['args'] = args
 
     dispatch = dispatcher.Dispatcher()
-    dispatch.map("/filepath", handlers['filepath'])
-    dispatch.map("/random_integer", handlers['random_integer'])
-    dispatch.map("/circle", handlers['circle'])
+    paths = ['random_integer', 'circle']
+
+    for path in paths:
+        handlers[path] = eval(path + '_handler')
+        dispatch.map("/" + path, handlers[path])
 
     osc_statemachine['dispatcher'] = dispatch
 
