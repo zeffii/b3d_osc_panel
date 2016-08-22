@@ -1,4 +1,6 @@
-The add-on adds a panel to TextEditor
+## Generic OSC Panel
+
+The add-on adds the "Generic OSC Panel" to TextEditor sidebar.
 
 During the startup (and while the underlying modal operator is not running) you get a chance to add `paths` to the listener.
 
@@ -10,8 +12,9 @@ set the local IP and port to listen on.
 
 ### Adding Paths
 
-Add `circle` if you want to listen to `/circle`
-Add `circle/damn/rock` if you want to listen to `/circle/damn/rock` (untested.. but should work)
+- Add `circle` if you want to listen to `/circle`  
+- Add `circle/damn/rock` if you want to listen to `/circle/damn/rock` (untested.. but should work)  
+
 you can add any number of paths, notice that the first `/` is added by the operator automatically, just less typing..and it would always start with a slash anyway.
 
 ![image](https://cloud.githubusercontent.com/assets/619340/17868632/f3c8f7c8-68af-11e6-93e1-f16b550dfe39.png)
