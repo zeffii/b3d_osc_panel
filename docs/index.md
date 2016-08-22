@@ -20,6 +20,7 @@ press the little plus
 
 ![image](https://cloud.githubusercontent.com/assets/619340/17868664/10b22fda-68b0-11e6-9fbc-12c8dee13e0b.png)
 
+notice how it now says 'listening on /circle', this doesn't mean it is currently listening, but it _will be_ listening on that path in the future.
 
 ### Add a function to call when a Path receives a new value
 
@@ -28,10 +29,12 @@ When you add something like `circle` you should add a `bpy.data.texts` called `d
 ### Path function file explained.
 
 an example of what you might write in `do_circle`
+
 ```python
 bpy.data.objects['Cube'].location.z = value
 ```
-in this case `value` is supplied as a local variable (magic!)  and you can assign it's value to anything in bpy.
+
+in this case `value` is supplied as a local variable (magic!)  and you can assign its value to anything in bpy.
 
 ps. I haven't tried to do complicated stuff with that as I don't have an multi output OSC controller attached, but I've tested with Supercollider sending rapid OSC signals and it seems to work.
 
