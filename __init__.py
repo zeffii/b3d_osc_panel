@@ -147,7 +147,7 @@ class GenericOscClient(bpy.types.Operator, object):
             osc_statemachine['status'] = RUNNING
             props = context.scene.generic_osc
             paths = context.scene.generic_osc_list
-            start_server_comms(props.ip, props.port, paths)
+            start_server_comms(props.ip, props.port, [i.path for i in paths])
 
         if type_op == 'end':
             osc_statemachine['server'].shutdown()
@@ -183,6 +183,14 @@ class GenericOSCpanel(bpy.types.Panel):
         config = row.operator('wm.osc_path_ops', icon='PLUS', text='')
         config.fn_name = 'ADD'
 
+        props_list = context.scene.generic_osc_list
+        for i, p in enumerate(props_list):
+            path_row = col.row(align=True)
+            path_row.label('listening on /{}'.format(p.path))
+            config = path_row.operator('wm.osc_path_ops', icon='ERROR', text='')
+            config.fn_name = 'REMOVE'
+            config.idx = i
+
         # exit early
         if state == NOT_FOUND:
             col.label('failed to (re)import pythonosc - see console')
@@ -197,14 +205,8 @@ class GenericOSCpanel(bpy.types.Panel):
 
         elif state == RUNNING:
             props = context.scene.generic_osc
-            props_list = context.scene.generic_osc_list
             col.label('listening on ip {0} and port {1}'.format(props.ip, props.port))
-            for i, path in enumerate(props_list):
-                path_row = col.row(align=True)
-                path_row.label('listening on /{}'.format(path))
-                config = path_row.operator('wm.osc_path_ops', icon='MINUS', text='')
-                config.fn_name = 'REMOVE'
-                config.idx = i
+
             
             tstr = 'end'
 
@@ -237,7 +239,7 @@ class GenericOscPathOps(bpy.types.Operator):
 
         if type_op == 'ADD':
             new_path = context.scene.generic_osc_list.add()
-            new_path = context.scene.generic_osc.new_path
+            new_path.path = context.scene.generic_osc.new_path
             context.scene.generic_osc.new_path = ""
 
         elif type_op == 'REMOVE':
