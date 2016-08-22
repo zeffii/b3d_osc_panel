@@ -39,7 +39,7 @@ bpy.data.objects['Cube'].location.z = value
 
 in this case `value` is supplied as a local variable (magic!)  and you can assign its value to anything in bpy.
 
-ps. I haven't tried to do complicated stuff with that as I don't have an multi output OSC controller attached, but I've tested with Supercollider sending rapid OSC signals and it seems to work.
+ps. I haven't tried to do complicated stuff with that as I don't have a multi output OSC controller attached, but I've tested with Supercollider sending rapid OSC signals and it seems to work.
 
 ### Then press start.
 
