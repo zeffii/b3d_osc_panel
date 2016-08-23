@@ -106,8 +106,13 @@ def start_server_comms(ip, port, paths):
     try:
         server = osc_server.ThreadingOSCUDPServer((args.ip, args.port), dispatch)
         print("Serving on {}".format(server.server_address))
+
+        # makes it non blocking, and serves on another thread, how exactly the dispatch
+        # commands are able to callback into the current thread is kinda magical. This 
+        # seems to work, but something tells me this is brittle af.
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()
+
         osc_statemachine['server'] = server
 
     except:
