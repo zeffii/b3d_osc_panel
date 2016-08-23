@@ -206,11 +206,10 @@ class GenericOSCpanel(bpy.types.Panel):
         elif state == RUNNING:
             props = context.scene.generic_osc
             col.label('listening on ip {0} and port {1}'.format(props.ip, props.port))
-
             
             tstr = 'end'
 
-        if tstr:
+        if tstr and props_list:
             op = col.operator('wm.generic_osc_server', text=tstr)
             op.mode = tstr
             op.speed = 1
