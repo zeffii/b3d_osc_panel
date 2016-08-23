@@ -200,8 +200,9 @@ class GenericOSCpanel(bpy.types.Panel):
         tstr = ''
         if state in {FOUND, STOPPED}:
             tstr = 'start'
-            col.prop(context.scene.generic_osc, 'ip')
-            col.prop(context.scene.generic_osc, 'port')
+            row = col.row(align=True)
+            row.prop(context.scene.generic_osc, 'ip', text='')
+            row.prop(context.scene.generic_osc, 'port', text='')
 
         elif state == RUNNING:
             props = context.scene.generic_osc
