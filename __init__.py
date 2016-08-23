@@ -180,14 +180,14 @@ class GenericOSCpanel(bpy.types.Panel):
 
         row = col.row(align=True)
         row.prop(context.scene.generic_osc, 'new_path', text='')
-        config = row.operator('wm.osc_path_ops', icon='PLUS', text='')
+        config = row.operator('wm.osc_path_ops', icon='ZOOMIN', text='')
         config.fn_name = 'ADD'
 
         props_list = context.scene.generic_osc_list
         for i, p in enumerate(props_list):
             path_row = col.row(align=True)
             path_row.label('listening on /{}'.format(p.path))
-            config = path_row.operator('wm.osc_path_ops', icon='ERROR', text='')
+            config = path_row.operator('wm.osc_path_ops', icon='ZOOMOUT', text='')
             config.fn_name = 'REMOVE'
             config.idx = i
 
