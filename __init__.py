@@ -112,13 +112,13 @@ def start_server_comms(ip, port, paths):
         # seems to work, but something tells me this is brittle af.
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()
-
+        osc_statemachine['server_thread'] = server_thread
         osc_statemachine['server'] = server
 
     except:
 
         print('already active')
-        server = osc_statemachine['server']
+
 
 
 class GenericOscClient(bpy.types.Operator, object):
@@ -155,7 +155,9 @@ class GenericOscClient(bpy.types.Operator, object):
             start_server_comms(props.ip, props.port, [i.path for i in paths])
 
         if type_op == 'end':
+            # osc_statemachine['server'].shutdown()
             osc_statemachine['server'].shutdown()
+            osc_statemachine['server'].server_close()
             osc_statemachine['status'] = STOPPED
 
     def execute(self, context):
