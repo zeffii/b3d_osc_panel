@@ -216,7 +216,6 @@ class GenericOSCpanel(bpy.types.Panel):
             op.speed = 1
 
 
-
 class GenericOscProps(bpy.types.PropertyGroup):
     ip = StringProperty(default='127.0.0.1')
     port = IntProperty(default=7771)
