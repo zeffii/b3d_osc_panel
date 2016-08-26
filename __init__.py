@@ -24,7 +24,7 @@ bl_info = {
     "location": "",
     "description": "",
     "warning": "",
-    "wiki_url": "",
+    "wiki_url": "https://github.com/zeffii/b3d_osc_panel/tree/master/docs",
     "tracker_url": "",
     "category": "Text Editor"
 }
@@ -65,14 +65,28 @@ except:
 add = bpy.utils.register_class
 remove = bpy.utils.unregister_class
 
+# handlers can be added later but I think the server needs to be stopped and restarted..
+osc_statemachine = {'status': STATUS}
+osc_statemachine['handlers'] = {}
 
-def general_handler(path, value):
+
+def general_handler(*args):
     '''
     path will be something like /circle
     this Modal OSC panel's operator expects to find a textblock called 'do_circle'
     it will execute the code it contains whenever it receives a new path/value pair.
 
     '''
+    num_args = len(args)
+
+    if num_args > 2:
+        path, *value = args
+    elif num_args == 2:
+        path, value = args
+    else:
+        print('probably bang command - not handled yet')
+        return
+
     textfile_name = 'do_' + path[1:]
     d = bpy.data.texts.get(textfile_name)
     if d:
@@ -82,9 +96,6 @@ def general_handler(path, value):
         except:
             print('failed to evaluate/exec {0}'.format(textfile_name))
 
-# handlers can be added later but I think the server needs to be stopped and restarted..
-osc_statemachine = {'status': STATUS}
-osc_statemachine['handlers'] = {}
 
 
 def start_server_comms(ip, port, paths):
@@ -127,7 +138,7 @@ class GenericOscClient(bpy.types.Operator, object):
     bl_label = "start and stop osc server"
 
     _timer = None
-    speed = FloatProperty()
+    speed = FloatProperty(default=0.2)
     mode = StringProperty()
 
     def modal(self, context, event):
