@@ -92,7 +92,7 @@ def general_handler(*args):
     if d:
         try:
             exec(d.as_string())
-            print('called random_integer handler', value)
+            # print('called {0} with {1}'.format(textfile_name, value))
         except:
             print('failed to evaluate/exec {0}'.format(textfile_name))
 
