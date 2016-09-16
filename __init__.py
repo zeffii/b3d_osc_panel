@@ -246,7 +246,7 @@ class GenericOSCpanel(bpy.types.Panel):
         if tstr and props_list:
             op = col.operator('wm.generic_osc_server', text=tstr)
             op.mode = tstr
-            op.speed = context.scene.generic_osc.speed
+            op.speed = 1 / context.scene.generic_osc.speed
 
 
 class GenericOscProps(bpy.types.PropertyGroup):
