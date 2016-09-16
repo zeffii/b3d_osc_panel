@@ -164,6 +164,7 @@ class GenericOscClient(bpy.types.Operator, object):
             # wipe for next round.
             path_queue = {}
 
+        print('happened')
         return {'PASS_THROUGH'}
 
     def event_dispatcher(self, context, type_op):
@@ -206,6 +207,7 @@ class GenericOSCpanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column()
+        col.prop(context.scene.generic_osc, 'speed', text='updates per/sec:')
 
         state = osc_statemachine['status']
 
@@ -244,13 +246,14 @@ class GenericOSCpanel(bpy.types.Panel):
         if tstr and props_list:
             op = col.operator('wm.generic_osc_server', text=tstr)
             op.mode = tstr
-            op.speed = 1
+            op.speed = context.scene.generic_osc.speed
 
 
 class GenericOscProps(bpy.types.PropertyGroup):
     ip = StringProperty(default='127.0.0.1')
     port = IntProperty(default=7771)
     new_path = StringProperty()
+    speed = IntProperty(min=1, max=150, default=10)  # 10 fps
 
 
 class GenericOscPathGroup(bpy.types.PropertyGroup):
