@@ -68,6 +68,18 @@ remove = bpy.utils.unregister_class
 # handlers can be added later but I think the server needs to be stopped and restarted..
 osc_statemachine = {'status': STATUS}
 osc_statemachine['handlers'] = {}
+osc_statemachine['path_queue'] = {}
+
+def execute_text_file(path, value):
+    textfile_name = 'do_' + path[1:]
+    d = bpy.data.texts.get(textfile_name)
+    if d:
+        try:
+            exec(d.as_string())
+            # print('called {0} with {1}'.format(textfile_name, value))
+        except:
+            print('failed to evaluate/exec {0}'.format(textfile_name))
+
 
 
 def general_handler(*args):
@@ -87,15 +99,7 @@ def general_handler(*args):
         print('probably bang command - not handled yet')
         return
 
-    textfile_name = 'do_' + path[1:]
-    d = bpy.data.texts.get(textfile_name)
-    if d:
-        try:
-            exec(d.as_string())
-            # print('called {0} with {1}'.format(textfile_name, value))
-        except:
-            print('failed to evaluate/exec {0}'.format(textfile_name))
-
+    osc_statemachine['path_queue'][path] = value
 
 
 def start_server_comms(ip, port, paths):
@@ -138,7 +142,7 @@ class GenericOscClient(bpy.types.Operator, object):
     bl_label = "start and stop osc server"
 
     _timer = None
-    speed = FloatProperty(default=0.2)
+    speed = FloatProperty(default=0.1)
     mode = StringProperty()
 
     def modal(self, context, event):
@@ -151,6 +155,16 @@ class GenericOscClient(bpy.types.Operator, object):
             return {'PASS_THROUGH'}
 
         # call block here
+        path_queue = osc_statemachine.get('path_queue')
+        if path_queue:
+            for path, value in path_queue.items():
+                # test specifically against None
+                execute_text_file(path, value)
+            
+            # wipe for next round.
+            path_queue = {}
+
+        print('happened')
         return {'PASS_THROUGH'}
 
     def event_dispatcher(self, context, type_op):
@@ -193,6 +207,7 @@ class GenericOSCpanel(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         col = layout.column()
+        col.prop(context.scene.generic_osc, 'speed', text='updates per/sec:')
 
         state = osc_statemachine['status']
 
@@ -231,13 +246,14 @@ class GenericOSCpanel(bpy.types.Panel):
         if tstr and props_list:
             op = col.operator('wm.generic_osc_server', text=tstr)
             op.mode = tstr
-            op.speed = 1
+            op.speed = 1 / context.scene.generic_osc.speed
 
 
 class GenericOscProps(bpy.types.PropertyGroup):
     ip = StringProperty(default='127.0.0.1')
     port = IntProperty(default=7771)
     new_path = StringProperty()
+    speed = IntProperty(min=1, max=150, default=10)  # 10 fps
 
 
 class GenericOscPathGroup(bpy.types.PropertyGroup):
